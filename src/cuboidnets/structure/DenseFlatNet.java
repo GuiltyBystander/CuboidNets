@@ -1,4 +1,8 @@
-package cuboidnets;
+package cuboidnets.structure;
+
+import cuboidnets.Searchable;
+import cuboidnets.Utility;
+import cuboidnets.search.State;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -13,7 +17,7 @@ public class DenseFlatNet implements Comparable<DenseFlatNet> {
     final BitSet bits;
 
 
-    private DenseFlatNet(SearchState state, Searchable face) {
+    private DenseFlatNet(State state, Searchable face) {
         var tiles = new ArrayList<>(face.getTiles());
         var offset = Utility.calcOffset(state, tiles, false);
 
@@ -40,7 +44,7 @@ public class DenseFlatNet implements Comparable<DenseFlatNet> {
         this.bits = bits;
     }
 
-    static DenseFlatNet fromState(SearchState state) {
+    public static DenseFlatNet fromState(State state) {
         PriorityQueue<DenseFlatNet> options = new PriorityQueue<>();
 
         Searchable face = state.allNets[0];

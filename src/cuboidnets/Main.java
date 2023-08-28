@@ -1,6 +1,10 @@
 package cuboidnets;
 
-import java.util.*;
+import cuboidnets.search.Manager;
+import cuboidnets.search.Workload;
+import cuboidnets.structure.Cuboid;
+
+import java.util.Arrays;
 
 // Press Shift twice to open the Search Everywhere dialog and type `show whitespaces`,
 // then press Enter. You can now see whitespace characters in your code.
@@ -77,38 +81,29 @@ public class Main {
                 System.out.println(c + " " + c.tiles.size() + " " + c.roots.size());
             }
             System.out.println();
-            if (cc.length < 5) {
-                List<SearchState> r = SearchBuilder.getSeeds(cc);
-                System.out.println("roots " + r.size());
+            Workload w = new Workload(cc);
+            if (!w.randomExplore) {
+                System.out.println("roots " + w.queueWork.size());
             }
             System.out.println("**");
         }
 
         System.out.println("-----------------");
 
+        Workload work = new Workload(cuboids[1]);
 
-        //List<SearchState> seeds = new ArrayList<>();
-        //seeds.add(SearchBuilder.randomSeed(cuboids[8]));
-        List<SearchState> seeds = SearchBuilder.getSeeds(cuboids[1]);
-        //while (seeds.size() > 1) {            seeds.remove(1);        }
-
-        Set<DenseFlatNet> flats = new HashSet<>();
-        for (SearchState seed : seeds) {
-            Collection<SearchState> res = seed.search();
-            for (SearchState r : res) {
-                DenseFlatNet flat = DenseFlatNet.fromState(r);
-                if (flats.add(flat)) {
-                    Utility.saveImage(flat.render(), "pic/" + seeds.get(0).maxTiles + "/flat", "f" + (flats.size()));
-                }
-            }
-            System.out.printf("%s %s%n", Arrays.toString(SearchState.depthCount), (System.nanoTime() - start) / 1000_000_000.);
-            System.out.printf("%d %d %s%n", res.size(), flats.size(), (System.nanoTime() - start) / 1000_000_000.);
-            //break;
+        Manager manager = new Manager(work);
+        manager.start();
+        try {
+            manager.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
-        System.out.println(Arrays.toString(SearchState.depthCount));
-        System.out.println(flats.size());
-        System.out.println((System.nanoTime() - start) / 1000_000_000.);
 
-        // I think some nets can wrap a single cuboid multiple different ways, so they will be double counted
+        System.out.println(Arrays.toString(work.allResults.depthCount));
+        System.out.println(work);
+        System.out.println(work.allResults.flatFinished.size());
+        System.out.println((System.nanoTime() - start) / 1000_000_000.);
     }
 }
+

@@ -1,4 +1,8 @@
-package cuboidnets;
+package cuboidnets.structure;
+
+import cuboidnets.Searchable;
+import cuboidnets.Utility;
+import cuboidnets.search.State;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -14,7 +18,7 @@ public class Face implements Searchable {
     final List<Tile> tiles = new ArrayList<>();
     private final Tile[][] field;
 
-    Face(Cuboid cuboid, int flatX, int flatY, int w, int h) {
+    public Face(Cuboid cuboid, int flatX, int flatY, int w, int h) {
         this.cuboid = cuboid;
         this.flatX = flatX;
         this.flatY = flatY;
@@ -110,7 +114,6 @@ public class Face implements Searchable {
     @Override
     public Collection<TileLink> getRoots() {
         List<TileLink> out = new ArrayList<>();
-        //out.add(field[w / 2][h / 2].links[0]);
         out.add(field[0][0].links[0]);
         return out;
     }
@@ -121,7 +124,7 @@ public class Face implements Searchable {
     }
 
     @Override
-    public BufferedImage render(SearchState state) {
+    public BufferedImage render(State state) {
         return Utility.render(state, tiles, true);
     }
 }

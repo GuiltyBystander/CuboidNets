@@ -1,20 +1,20 @@
-package cuboidnets;
+package cuboidnets.structure;
 
 import java.util.Objects;
 
 public class TileLink {
     // TODO consider just a winged edge data structure!!!  maybe not.   I like keeping the index thingy
 
-    final Tile tile;
+    public final Tile tile;
     final int up; // direction leaving the tile.  todo, think about renaming
-    TileLink mirror; // will not be null at the end of setup.  I don't believe in getters/setters
+    public TileLink mirror; // will not be null at the end of setup.  I don't believe in getters/setters
 
     TileLink(Tile tile, int up) {
         this.tile = tile;
         this.up = up & 0b11;
     }
 
-    TileLink turn(int direction) {
+    public TileLink turn(int direction) {
         return tile.links[(up + direction) & 0b11];
     }
 

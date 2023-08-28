@@ -1,33 +1,34 @@
-package cuboidnets;
+package cuboidnets.search;
+
+import cuboidnets.Searchable;
+import cuboidnets.Utility;
+import cuboidnets.structure.MetaTileLink;
+import cuboidnets.structure.Tile;
+import cuboidnets.structure.TileLink;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.Serializable;
 import java.util.List;
 import java.util.*;
 
-public class SearchState implements Serializable {
-
-    //todo move statics into a data accumulator class that's used per thread
-    static final long startTime = System.nanoTime();
-    static final int[] depthCount = new int[71];
-    static int cnt;
-    static int bestDepth = 0;
-    final int index;
-    final Searchable[] allNets; // first is a flat net, rest are cuboids
-    final int maxTiles; // total tiles on the cuboid
+public class State implements Comparable<State> {
+    //TODO, simplify this list of member variables so it's easier to save
+    public final List<MetaTileLink> links = new ArrayList<>(); //all the potential links //todo: consider making `links` a set
+    public final Map<Tile, Integer> tiles = new HashMap<>(); // all the tiles we've used and what depth
+    public final int maxTiles; // total tiles on the cuboid
+    public final Set<TileLink> bansLink = new HashSet<>();
+    public final Searchable[] allNets; // first is a flat net, rest are cuboids
     final MetaTileLink root;
-    final Map<Tile, Integer> tiles = new HashMap<>(); // all the tiles we've used and what depth
-    final List<MetaTileLink> links = new ArrayList<>(); //all the potential links //todo: consider making `links` a set
     final Map<TileLink, MetaTileLink> linkMap = new HashMap<>();
     final Set<MetaTileLink> bansMeta = new HashSet<>();
-    final Set<TileLink> bansLink = new HashSet<>();
+    final PriorityQueue<FloodFill> loops = new PriorityQueue<>();
+    final Set<FloodFill> oldLoops = new HashSet<>();
+    final Map<TileLink, FloodFill> testedForLoops = new HashMap<>();
     int depth; //basically final, but technically not
     boolean dead = false; // if true, the cuboid is unsolvable
     List<MetaTileLink> bestLoop = null;
 
-    SearchState(Searchable[] allNets, MetaTileLink root, int maxTiles) {
-        index = cnt++;
+    State(Searchable[] allNets, MetaTileLink root, int maxTiles) {
         this.allNets = allNets;
         this.depth = 1;
         this.root = root;
@@ -45,8 +46,7 @@ public class SearchState implements Serializable {
         bestLoop = links;
     }
 
-    private SearchState(SearchState parent, MetaTileLink step) {
-        index = cnt++;
+    private State(State parent, MetaTileLink step) {
         this.allNets = parent.allNets;
         this.depth = parent.depth;
         this.root = parent.root;
@@ -56,13 +56,13 @@ public class SearchState implements Serializable {
         this.linkMap.putAll(parent.linkMap);
         this.bansMeta.addAll(parent.bansMeta);
         this.bansLink.addAll(parent.bansLink);
+        this.loops.addAll(parent.loops);
+        this.oldLoops.addAll(parent.oldLoops);
+        this.testedForLoops.putAll(parent.testedForLoops);
         this.dead = parent.dead;
 
         makeStep(step);
     }
-
-    //SearchState(String encoding) {        //todo, find a way to decode    }
-    //String encode() {        //todo find a way to encode        return "";    }
 
     private void makeStep(MetaTileLink step) {
         depth += 1;
@@ -96,10 +96,99 @@ public class SearchState implements Serializable {
             }
         }
 
+        for (TileLink tl : step.links) {
+            if (testedForLoops.containsKey(tl)) {
+                FloodFill ff = testedForLoops.get(tl);
+                loops.remove(ff);
+                oldLoops.add(ff);
+                for (TileLink inlet : ff.inlets) {
+                    testedForLoops.remove(inlet);
+                }
+            }
+        }
+
+        if (isComplete()) {
+            return;
+        }
 
         links.removeIf(this::isBanned);
-
         findSmallestLoop();
+        //findSmallestArea();
+        //findSmallestArea2();
+        if (false) {
+            //finding loops by area seemed always worse.  perhaps revisit later
+            if (loops.size() > 3 &&
+                    bestLoop != null &&
+                    bestLoop.size() > 1) {
+                System.out.println(depth + " " + bestLoop.size() + " " + loops);
+                Utility.saveImage(render(), "pic/" + maxTiles, "aaa-dead");
+            }
+        }
+
+        // if only one entrance to loop, take it
+        if (!dead && bestLoop.size() == 1) {
+            makeStep(bestLoop.get(0));
+        }
+    }
+
+    private void findSmallestArea2() {
+        if (dead) {
+            return;
+        }
+        // if an edge gets banned before it gets tested, that's bad, but it should also be recognized as a failure then too
+        for (MetaTileLink mtl : links) {
+            if (testedForLoops.containsKey(mtl.links[1])) {
+                continue;
+            }
+            boolean isCuboid = false;
+            for (TileLink tl : mtl.links) {
+                if (!isCuboid) {
+                    isCuboid = true;
+                    continue;
+                }
+
+
+                FloodFill ff = new FloodFill(this, tl.mirror.tile);
+                loops.add(ff);
+                for (TileLink inlet : ff.inlets) {
+                    testedForLoops.put(inlet, ff);
+                }
+            }
+        }
+
+        if (loops.isEmpty()) {
+            dead = true;
+        } else {
+            bestLoop = loops.peek().metaLoop(this);
+        }
+        // TODO:::!!!! when making a move , need to pull/ban out all the loops
+    }
+
+    private void findSmallestArea() {
+        bestLoop = links;
+        for (int i = 1; i < allNets.length && bestLoop.size() > 1; ++i) {
+            Set<MetaTileLink> tested = new HashSet<>();
+
+            for (MetaTileLink link : links) {
+                if (tested.contains(link)) {
+                    continue;
+                }
+
+                TileLink start = link.links[i];
+                List<MetaTileLink> currentLoop = new ArrayList<>();
+
+                for (TileLink f : new FloodFill(this, start.mirror.tile).inlets) {
+                    currentLoop.add(linkMap.get(f));
+                }
+
+
+                if (bestLoop.size() > currentLoop.size()) {
+                    bestLoop = currentLoop;
+                }
+
+                tested.addAll(currentLoop);
+            }
+        }
     }
 
     private void findSmallestLoop() {
@@ -134,11 +223,6 @@ public class SearchState implements Serializable {
                 tested.addAll(currentLoop);
             }
         }
-
-        // if only one entrance to loop, take it
-        if (bestLoop.size() == 1) {
-            makeStep(bestLoop.get(0));
-        }
     }
 
 
@@ -154,7 +238,7 @@ public class SearchState implements Serializable {
             // we're banning a tile, not a link??? on part of a search.  not done on every ban....
 
             if (isCuboid && Utility.linkBackHome(this, link) == null) {
-                dead = true;
+                dead = true;//todo, maybe make this the return
             }
             isCuboid = true;
         }
@@ -167,7 +251,11 @@ public class SearchState implements Serializable {
         }
     }
 
-    boolean isBanned(MetaTileLink mtl) {
+    public boolean isBanned(TileLink tl) {
+        return isBanned(linkMap.get(tl));
+    }
+
+    public boolean isBanned(MetaTileLink mtl) {
         if (mtl == null) {
             return false;
         }
@@ -227,60 +315,29 @@ public class SearchState implements Serializable {
             counts[i] /= i;
         }
 
-
         System.out.printf("depth:%s links:%s  %s%n", depth, numLinks, Arrays.toString(counts));
-        if (links.size() == 1 && false) {
-            System.exit(1);
-        }
     }
 
-    void reportProgress() {
-        ++depthCount[depth];
-        if (index % 100000 == 0) {
-            System.out.printf("%s %s%n", Arrays.toString(depthCount), (System.nanoTime() - startTime) / 1000_000_000.);
-            // loopCountTest();
-            // Utility.saveImage(render(), "pic/" + maxTiles, "aaa-newest");
-        }
-    }
 
-    Collection<SearchState> search() {
-        Collection<SearchState> out = new ArrayList<>();
-        if (dead) {
-            return out;
-        }
-        reportProgress();
-
-        //todo, add parameter for max depth
-        //todo, prune search if tiles are cut off
-        if (bestDepth < depth) {
-            bestDepth = depth;
-            Utility.saveImage(render(), "pic/" + maxTiles, depth + "-" + index);
+    public void search(Results results) {
+        if (results.reportProgress(this)) {
+            return;
         }
 
-        if (isComplete()) {
-            //Utility.saveImage(render(), "pic/" + maxTiles, "complete" + index);
-            //Utility.saveImage(DenseFlatNet.fromState(this).render(), "pic/" + maxTiles + "/bits", "f" + index);
-            out.add(this);
-            return out;
-        }
-
-        //for (MetaTileLink link : links) {
         for (MetaTileLink link : bestLoop) {
             if (isBanned(link)) {
                 continue;
             }
 
-            //todo: fancy stuff for parallel processing
-            out.addAll(new SearchState(this, link).search());
+            new State(this, link).search(results);
 
             ban(link, true);//todo, bad the MetaTile??
-
             if (dead) {
                 break;
             }
         }
 
-        return out;
+        //todo, reset the ban list?
     }
 
     BufferedImage render() {
@@ -306,5 +363,28 @@ public class SearchState implements Serializable {
 
     boolean isComplete() {
         return depth == maxTiles;
+    }
+
+    @Override
+    public int compareTo(State o) {
+        {
+            // deeper things first
+            int a = depth;
+            int b = o.depth;
+            if (a != b) {
+                return -Integer.compare(a, b);
+            }
+        }
+        {
+            // fewer links
+            int a = links.size();
+            int b = o.links.size();
+            if (a != b) {
+                return Integer.compare(a, b);
+            }
+        }
+
+
+        return 0;
     }
 }

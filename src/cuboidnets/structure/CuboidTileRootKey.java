@@ -1,4 +1,4 @@
-package cuboidnets;
+package cuboidnets.structure;
 
 import java.util.Arrays;
 

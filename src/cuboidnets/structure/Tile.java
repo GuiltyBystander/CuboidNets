@@ -1,10 +1,10 @@
-package cuboidnets;
+package cuboidnets.structure;
 
 public class Tile {
 
-    final int flatX, flatY;
+    public final TileLink[] links = new TileLink[4];
+    public final int flatX, flatY;
     final Face face;
-    final TileLink[] links = new TileLink[4];
 
     Tile(Face face, int flatX, int flatY) {
         this.face = face;

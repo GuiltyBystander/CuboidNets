@@ -108,10 +108,10 @@ use non-banned perimeter as my metric. This is because it's fairly easy to
 calculate and is probably faster/cheaper than doing a flood-fill. If we imagine
 walking and leaving an inlet into the area, you just follow a right-hand rule
 like you're solving a maze the brute force way. This will lead you to another
-inlet. Repeat until you get back to the inlet you started on and you've
+inlet. Repeat until you get back to the inlet you started on, and you've
 identified a loop.
 
-#### Mutliple Cuboids
+#### Multiple Cuboids
 
 Because each cuboid wraps differently, we might have only 1 loop on one, while
 having multiple loops on another. For the best result we'll need to find the
@@ -160,7 +160,7 @@ search.
 ## Some graphs I wanted to share
 
 This is the number of states at each depth of a search for a couple different
-searches. The 22/30 tile searchs are complete, while the counts for the 46 tile
+searches. The 22/30 tile searches are complete, while the counts for the 46 tile
 search is only about 3% complete. Ignore the funny upswing at the end of the
 first two. It's a quirk of my exploration not counting states that have only 1
 legal move.

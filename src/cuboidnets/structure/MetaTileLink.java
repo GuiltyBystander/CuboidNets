@@ -1,25 +1,25 @@
-package cuboidnets;
+package cuboidnets.structure;
 
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 
 public class MetaTileLink {
+    public final TileLink[] links;
     final int n;
-    final TileLink[] links;
 
-    MetaTileLink(TileLink[] links) {
+    public MetaTileLink(TileLink[] links) {
         n = links.length;
         this.links = links;
     }
 
-    MetaTileLink(MetaTileLink mtl, TileLink l) {
+    public MetaTileLink(MetaTileLink mtl, TileLink l) {
         n = mtl.n + 1;
         links = Arrays.copyOf(mtl.links, n);
         links[n - 1] = l;
     }
 
-    Tile[] tiles() {
+    public Tile[] tiles() {
         Tile[] tiles = new Tile[n];
         for (int i = 0; i < n; ++i) {
             tiles[i] = links[i].tile;
@@ -27,7 +27,7 @@ public class MetaTileLink {
         return tiles;
     }
 
-    MetaTileLink turn(int direction) {
+    public MetaTileLink turn(int direction) {
         direction &= 0b11;
         if (direction == 0) {
             return this;
@@ -40,7 +40,7 @@ public class MetaTileLink {
         return new MetaTileLink(turned);
     }
 
-    MetaTileLink mirror() {
+    public MetaTileLink mirror() {
         TileLink[] mirrored = new TileLink[n];
         for (int i = 0; i < n; ++i) {
             mirrored[i] = links[i].mirror;

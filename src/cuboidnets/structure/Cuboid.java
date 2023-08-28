@@ -1,4 +1,8 @@
-package cuboidnets;
+package cuboidnets.structure;
+
+import cuboidnets.Searchable;
+import cuboidnets.Utility;
+import cuboidnets.search.State;
 
 import java.awt.image.BufferedImage;
 import java.util.*;
@@ -12,13 +16,13 @@ public class Cuboid implements Searchable {
     5
      */
 
+    public final List<Tile> tiles = new ArrayList<>();
+    public final Map<CuboidTileRootKey, TileLink> roots = new HashMap<>();
     final int x, y, z;
     final int flatW, flatH;
     final Face[] faces = new Face[6]; //might not need to keep this
-    final List<Tile> tiles = new ArrayList<>();
-    final Map<CuboidTileRootKey, TileLink> roots = new HashMap<>();
 
-    Cuboid(int x, int y, int z) {
+    public Cuboid(int x, int y, int z) {
         // none of this has to be performant.
         // we shouldn't be running this code often.
 
@@ -95,7 +99,7 @@ public class Cuboid implements Searchable {
         return tiles;
     }
 
-    public BufferedImage render(SearchState state) {
+    public BufferedImage render(State state) {
         return Utility.render(state, tiles, false);
     }
 }

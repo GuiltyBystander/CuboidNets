@@ -1,5 +1,9 @@
 package cuboidnets;
 
+import cuboidnets.search.State;
+import cuboidnets.structure.Tile;
+import cuboidnets.structure.TileLink;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -12,24 +16,24 @@ import java.util.Collection;
 
 public class Utility {
     //todo: consider enum
-    static final int UP = 0;
-    static final int LEFT = 1;
-    static final int DOWN = 2;
-    static final int RIGHT = 3;
+    public static final int cores = Runtime.getRuntime().availableProcessors() - 2;
+    public static final int UP = 0;
+    public static final int LEFT = 1;
+    public static final int DOWN = 2;
+    public static final int RIGHT = 3;
     static int saveProtection = 0;
 
 
     private Utility() {
     }
 
-    static void saveImage(BufferedImage bi, String folderName, String name) {
+    public static void saveImage(BufferedImage bi, String folderName, String name) {
         if (saveProtection++ > 5000) {
             return;
         }
 
         try {
             Files.createDirectories(Paths.get(folderName));
-            //= "pics";
             // retrieve image
             File outputfile = new File(String.format("%s\\%s.png", folderName, name));
             ImageIO.write(bi, "png", outputfile);
@@ -38,7 +42,7 @@ public class Utility {
         }
     }
 
-    static int[] calcOffset(SearchState state, Collection<Tile> tiles, boolean includeAdjacent) {
+    public static int[] calcOffset(State state, Collection<Tile> tiles, boolean includeAdjacent) {
         tiles.removeIf(tile -> {
             if (state.tiles.containsKey(tile)) {
                 return false;
@@ -68,9 +72,13 @@ public class Utility {
             countY[t.flatY] = true;
         }
 
-        int x, y;
-        for (x = flatW; x > 0 && countX[x - 1]; --x) ;
-        for (y = flatH; y > 0 && countY[y - 1]; --y) ;
+        int x = flatW, y = flatH;
+        while (x > 0 && countX[x - 1]) {
+            --x;
+        }
+        while (y > 0 && countY[y - 1]) {
+            --y;
+        }
         x = flatW - x;
         y = flatH - y;
 
@@ -78,14 +86,14 @@ public class Utility {
         return new int[]{x, y, flatW, flatH};
     }
 
-    static int[] remap(Tile tile, int[] offset) {
+    public static int[] remap(Tile tile, int[] offset) {
         return new int[]{
                 (offset[0] + tile.flatX) % offset[2],
                 (offset[1] + tile.flatY) % offset[3],
         };
     }
 
-    static BufferedImage render(SearchState state, Collection<Tile> tiles, boolean recenter) {
+    public static BufferedImage render(State state, Collection<Tile> tiles, boolean recenter) {
         int[] offset = {0, 0, 9999, 9999};
         if (recenter) {
             tiles = new ArrayList<>(tiles);
@@ -114,7 +122,7 @@ public class Utility {
             Shape s = new Rectangle(x, y, scale, scale);
 
             if (state.tiles.containsKey(t)) {
-                float hue = 1f * (state.tiles.get(t) - 1) / state.maxTiles;//tiles.size();
+                float hue = 1f * (state.tiles.get(t) - 1) / state.maxTiles;
                 g2.setColor(Utility.getColor(hue));
                 g2.fill(s);
             } else {
@@ -127,7 +135,7 @@ public class Utility {
                     if (state.bansLink.contains(t.links[i])) {
                         g2.setColor(Color.gray);
                         g2.fillRect(x + dx[i], y + dy[i], 3, 3);
-                    } else if (state.isBanned(state.linkMap.get(t.links[i].mirror))) {
+                    } else if (state.isBanned(t.links[i].mirror)) {
                         g2.setColor(Color.red);
                         g2.fillRect(x + dx[i], y + dy[i], 3, 3);
                     }
@@ -145,7 +153,7 @@ public class Utility {
     }
 
 
-    static TileLink linkBackHome(SearchState state, TileLink justBanned) {
+    public static TileLink linkBackHome(State state, TileLink justBanned) {
         // input just banned is to be from a tile pointing into unmapped tiles
         //     if it is mapped, just return it immediately
         // return will be a link from mapped pointing to an unmapped tile.
